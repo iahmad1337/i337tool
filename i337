@@ -77,8 +77,8 @@ function vim_wrapper() {
     #     -c "set path+=\$PROJECT_ROOT/include" \\
     #     -c "set tags+=\$HOME/.local/share/tags" \\
     #     -c "set tags+=\$PROJECT_TAGS" \\
-    #     -c "set makeprg=i337\\ make\\ -j10\\ \$*" \\
-    #     -c "set grepprg=i337\\ csearch\\ -n\\ \$*" \\
+    #     -c "set makeprg=i337\\ make\\ -j10\\ \\$*" \\
+    #     -c "set grepprg=i337\\ csearch\\ -n\\ \\$*" \\
     #     \$@
     echo not implemented && exit 1
 }
