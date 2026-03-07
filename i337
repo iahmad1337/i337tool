@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+
+set -e -o pipefail
+
+function usage() {
+    echo "Usage:
+    $0 <command>
+
+    where command is one of
+        init        initialize project by creating CWD/.i337/config.sh
+        grep        grep/csearch wrapper
+        make        build system srapper
+        vim         vim wrapper
+        help        print this help"
+}
+
+if [ $# -lt 1 ]; then
+    usage; exit 1
+fi
+
+function find_root() {
+    while [ ! -f .i337/config.sh -a "$(pwd)" != "/" ]; do
+        cd ..
+    done
+    if [ -f .i337/config.sh ]; then
+        echo "$(pwd)"
+    fi
+}
+
+function init() {
+    if [ -f .i337/config.sh ]; then
+        echo "error: config.sh already exists"
+        exit 1
+    fi
+    if [ -n "$(find_root)" ]; then
+        echo "error: nested projects are prohibited"
+        exit 1
+    fi
+
+    mkdir -p .i337
+    
+    cat >.i337/config.sh <<EOF
+#!/bin/false
+# do not execute, only source
+
+export PROJECT_ROOT=$(pwd)
+export CSEARCHINDEX=$(pwd)/.i337/csearchindex
+export PROJECT_TAGS=$(pwd)/.i337/tags
+# other env vars
+
+# ulimit -S -m ... or smth like that
+
+function reload_wrapper() {
+    # Examples:
+    # ctags --recurse --languages='c++,c,cmake,python,sh' -DTRACE_ENABLED --totals=yes --tag-relative=never -o \$PROJECT_TAGS \$PROJECT_ROOT/{src,include,cmake}
+    # cindex \$PROJECT_ROOT/{src,include,cmake,doc,tests}
+    echo not implemented && exit 1
+}
+
+function grep_wrapper() {
+    # Examples:
+    # grep -n \$@
+    # csearch -n \$@
+    echo not implemented && exit 1
+}
+
+function make_wrapper() {
+    # Examples:
+    # cmake --build debug -- -j10 \$@
+    # make -C \$PROJECT_ROOT \$@
+    echo not implemented && exit 1
+}
+
+function vim_wrapper() {
+    # Example:
+    # vim \\
+    #     -c "set path+=\$PROJECT_ROOT/include" \\
+    #     -c "set tags+=\$HOME/.local/share/tags" \\
+    #     -c "set tags+=\$PROJECT_TAGS" \\
+    #     -c "set makeprg=i337\\ make\\ -j10\\ \$*" \\
+    #     -c "set grepprg=i337\\ csearch\\ -n\\ \$*" \\
+    #     \$@
+    echo not implemented && exit 1
+}
+
+EOF
+
+    chmod 0600 .i337/config.sh
+}
+
+case "$1" in
+    init) init; exit;;
+    help) usage; exit;;
+esac
+
+readonly proj_root="$(find_root)"
+if [ -z "$proj_root" ]; then
+    echo "error: not a i337 project"
+    exit 1
+fi
+
+source "${proj_root}/.i337/config.sh"
+
+cmd="$1"
+case "$cmd" in
+    vim | grep | make | reload)
+        shift
+        ${cmd}_wrapper $@
+        ;;
+    *)
+        echo "error: unknown command"
+        usage
+        exit 1
+        ;;
+esac
