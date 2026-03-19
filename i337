@@ -59,15 +59,15 @@ function reload_wrapper() {
 
 function grep_wrapper() {
     # Examples:
-    # grep -n \$@
-    # csearch -n \$@
+    # grep -n "\$@"
+    # csearch -n "\$@"
     echo not implemented && exit 1
 }
 
 function make_wrapper() {
     # Examples:
-    # cmake --build debug -- -j10 \$@
-    # make -C \$PROJECT_ROOT \$@
+    # cmake --build debug -- -j10 "\$@"
+    # make -C \$PROJECT_ROOT "\$@"
     echo not implemented && exit 1
 }
 
@@ -79,7 +79,7 @@ function vim_wrapper() {
     #     -c "set tags+=\$PROJECT_TAGS" \\
     #     -c "set makeprg=i337\\ make\\ -j10\\ \\$*" \\
     #     -c "set grepprg=i337\\ csearch\\ -n\\ \\$*" \\
-    #     \$@
+    #     "\$@"
     echo not implemented && exit 1
 }
 
@@ -105,7 +105,7 @@ cmd="$1"
 case "$cmd" in
     vim | grep | make | reload)
         shift
-        ${cmd}_wrapper $@
+        ${cmd}_wrapper "$@"
         ;;
     *)
         echo "error: unknown command"
