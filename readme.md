@@ -1,5 +1,6 @@
 TODO
-- urldecode
-- size + sha256sum + other stat attrs
-- zstd?
-- osx + linux blob (both static)
+- makefile with system-wide install (only readable)
+- bwrap all the things
+- shell completion
+- separate user for various scripts?
+- agentic audit
