@@ -30,6 +30,7 @@ set -euo pipefail
 TARGET="."
 DICT_FILE=""
 VERBOSE=false
+IGNORE_LIST=()
 
 # Colors for output (optional)
 RED='\033[0;31m'
@@ -44,6 +45,7 @@ Usage: $0 [--dict dictionary.txt] [--target path] [--verbose] [--help]
 Options:
   --dict FILE     File with forbidden phrases (one per line, case‑insensitive)
   --target PATH   File or directory to audit (default: current directory)
+  --ignore        File with suppressed warnings (line-separated)
   --verbose       Show extra info (e.g., skipped binary files)
   --help          Show this help
 
@@ -62,6 +64,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --target)
             TARGET="$2"
+            shift 2
+            ;;
+        --ignore)
+            IGNORE_LIST=$(sort "$2" | uniq | awk 'NF')  # sort and remove empty lines
             shift 2
             ;;
         --verbose)
@@ -205,9 +211,64 @@ check_empty_file() {
     fi
 }
 
+check_vim_file() {
+    # TODO: some strings + sort + uniq + join will suffice
+    local dangerous=(
+        '\bwritefile\b'
+        '\bterm_dumpwrite\b'
+        '\bsystem\b'
+        '\bsystemlist\b'
+        '\bsound_'               # sound playback
+        '\bsetfperm\b'
+        '\bserver'               # gui client-vim server functionality
+        '\brubyeval\b'
+        '\bremote_'
+        '\breadblob\b'
+        '\bpyxeval\b'
+        '\bpyeval\b'
+        '\bpy3eval\b'
+        '\bmzeval\b'
+        '\bluaeval\b'
+        '\blibcall\b'
+        '\blibcallnr\b'
+        '\bjob_'
+        '\binterrupt\b'
+        '\binputsecret\b'
+        '\bfuncref\b'
+        '\bfeedkeys\b'
+        '\bexecute\b'
+        '\beval\b'
+        '\benviron\b'
+        '\bdebugbreak\b'
+        '\bcscope_connection\b'
+        '\bch_'                  # job-channel api
+    )
+    for pat in "${dangerous[@]}"; do
+        grep -Hn -E "$pat" "$file" 2>/dev/null || true
+    done
+}
+
+check_py_file() {
+    # TODO: dangerous functions specific to python
+    # - relative imports
+}
+
+check_sh_file() {
+    # TODO:
+    # - su, sudo, chmod, mount, umount
+    # - /dev
+}
+
+without_ignored() {
+    local s=$(echo "$1" | sort)
+    # TODO: bad command substitution, not ready yet but almost there
+    sort --merge --ignore-leading-blanks <(cat <($1) <($IGNORE_LIST)) | uniq --unique 
+    # comm --check-order -1 <($s) <($IGNORE_LIST)
+}
+
 do_report() {
     local message="$1"
-    local check_output="$2"
+    local check_output=$(without_ignored "$2")
     local color="${3:-}"
     echo -en "${message} check..."
     if [[ -n "$check_output" ]]; then
@@ -250,7 +311,13 @@ audit_file() {
         do_report "[DICTIONARY]" "$dict_hits" "${RED}"
     fi
 
-    # 3. Extra checks (quality & security)
+    # 3. vim-specific checks
+    if [[ "${file:-4}" = ".vim" -o "${file:-5}" = "vimrc" ]]; then
+        local vim_check=$(check_vim_file "$file")
+        do_report "[VIM-SPECIFIC]" "${vim_check}" "${RED}"
+    fi
+
+    # 4. Extra checks (quality & security)
     local trail=$(check_trailing_whitespace "$file")
     do_report "[TRAILING WHITESPACE]" "$trail" "${YELLOW}"
 
@@ -285,9 +352,9 @@ audit_file() {
     do_report "[EMPTY FILE]" "${empty}" "${YELLOW}"
 
     # TODO: 
-    # - dangereous vim options/functions/etc.
-    # - vim modeline
+    # - custom checkers for filetypes
     # - c++ function dictionary
+    # - vim modeline
     # - file:line ignore list, supplied via command line argument
     # - [hard] incorporate existing dictionaries:
     #   - https://github.com/johnsaigle/scary-strings

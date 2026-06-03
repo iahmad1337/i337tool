@@ -4,3 +4,4 @@ TODO
 - shell completion
 - separate user for various scripts?
 - agentic audit
+- project-specific whitelist for audit.sh
