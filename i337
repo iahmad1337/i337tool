@@ -46,41 +46,50 @@ function init() {
 export PROJECT_ROOT=$(pwd)
 export CSEARCHINDEX=$(pwd)/.i337/csearchindex
 export PROJECT_TAGS=$(pwd)/.i337/tags
+export IGNORELIST=$(pwd)/.i337/ignorelist  # for auditing
 # other env vars
 
 # ulimit -S -m ... or smth like that
 
 function reload_wrapper() {
     # Examples:
-    # ctags --recurse --languages='c++,c,cmake,python,sh' -DTRACE_ENABLED --totals=yes --tag-relative=never -o \$PROJECT_TAGS \$PROJECT_ROOT/{src,include,cmake}
-    # cindex \$PROJECT_ROOT/{src,include,cmake,doc,tests}
-    echo not implemented && exit 1
+    INDEXED_DIRS=(
+        .
+    )
+    LANGS='c++,c,asm,cmake,python,sh,awk,Go,vim,Tex,SQL,Protobuf,Make,Meson,Markdown,Lua'
+    EXCLUDES=(
+        .git
+        CMakeFiles
+        CmakeCache.txt
+    )
+    printf -v EXCLUDE_FLAGS -- '--exclude=%s ' "\${EXCLUDES[@]}"
+    
+    cd \$PROJECT_ROOT
+    ctags --recurse "\${EXCLUDE_FLAGS[@]}" --languages="\$LANGS" --totals=yes --tag-relative=yes -o \$PROJECT_TAGS "\${INDEXED_DIRS[@]}"
+    cindex "\${INDEXED_DIRS[@]}"
 }
 
 function grep_wrapper() {
     # Examples:
     # grep -n "\$@"
-    # csearch -n "\$@"
-    echo not implemented && exit 1
+    csearch -n "\$@"
 }
 
 function make_wrapper() {
     # Examples:
     # cmake --build debug -- -j10 "\$@"
-    # make -C \$PROJECT_ROOT "\$@"
-    echo not implemented && exit 1
+    make -C \$PROJECT_ROOT "\$@"
 }
 
 function vim_wrapper() {
     # Example:
-    # vim \\
-    #     -c "set path+=\$PROJECT_ROOT/include" \\
-    #     -c "set tags+=\$HOME/.local/share/tags" \\
-    #     -c "set tags+=\$PROJECT_TAGS" \\
-    #     -c "set makeprg=i337\\ make\\ -j10\\ \\$*" \\
-    #     -c "set grepprg=i337\\ csearch\\ -n\\ \\$*" \\
-    #     "\$@"
-    echo not implemented && exit 1
+    vim \\
+        -c "set path+=\$PROJECT_ROOT/include" \\
+        -c "set tags+=\$HOME/.local/share/tags" \\
+        -c "set tags+=\$PROJECT_TAGS" \\
+        -c "set makeprg=i337\\ make\\ -j10\\ \\\$*" \\
+        -c "set grepprg=i337\\ csearch\\ -n\\ \\\$*" \\
+        "\$@"
 }
 
 EOF

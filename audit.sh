@@ -25,12 +25,13 @@
 #
 
 set -euo pipefail
+set -x
 
 # Defaults
 TARGET="."
 DICT_FILE=""
 VERBOSE=false
-IGNORE_LIST=()
+IGNORE_LIST=""
 
 # Colors for output (optional)
 RED='\033[0;31m'
@@ -212,123 +213,34 @@ check_empty_file() {
 }
 
 check_vim_file() {
-    # TODO: some strings + sort + uniq + join will suffice
-    local dangerous=(
-        '[0-9A-Za-z_]prg\b'      # *prg family of options
-        '\.\./\.\.'
-        '\bbackup\b'
-        '\bch_'                  # job-channel api
-        '\bcscope_connection\b'
-        '\bdebugbreak\b'
-        '\benviron\b'
-        '\beval\b'
-        '\bex\b'
-        '\bexecute\b'
-        '\bfeedkeys\b'
-        '\bfuncref\b'
-        '\binputsecret\b'
-        '\binterrupt\b'
-        '\bjob_'
-        '\blibcall\b'
-        '\blibcallnr\b'
-        '\bluadll\b'
-        '\bluaeval\b'
-        '\bmaxfuncdepth\b'
-        '\bmfd\b'
-        '\bmzeval\b'
-        '\bmzschemedll\b'
-        '\bmzschemegcdll\b'
-        '\bnoex\b'
-        '\bpath\b'
-        '\bperldll\b'
-        '\bpy3eval\b'
-        '\bpyeval\b'
-        '\bpythondll\b'
-        '\bpythonhome\b'
-        '\bpythonthreedll\b'
-        '\bpythonthreehome\b'
-        '\bpyx\b'
-        '\bpyxeval\b'
-        '\bpyxversion\b'
-        '\breadblob\b'
-        '\bremote_'
-        '\brubydll\b'
-        '\brubyeval\b'
-        '\bserver'               # gui client-vim server functionality
-        '\bsessionoptions\b'
-        '\bsetfperm\b'
-        '\bsh(e|el|ell)?\b'
-        '\bsound_'               # sound playback
-        '\bssop\b'
-        '\bsystem\b'
-        '\bsystemlist\b'
-        '\btcldll\b'
-        '\bterm_dumpwrite\b'
-        '\bvi\b'
-        '\bviewoptions\b'
-        '\bvif\b'
-        '\bviminfo\b'
-        '\bviminfofile\b'
-        '\bvop\b'
-        '\bwritefile\b'
-        '\|'                    # cmdline injection
-        '`'                     # ditto
-        'autoread'
-        'autowrite'
-        'backupcopy'
-        'backupdir'
-        'backupext'
-        'backupskip'
-        'bomb'
-        'charconvert'
-        'exrc'
-        'guifont'
-        'guioptions'
-        'helpfile'
-        'keymap'
-        'langmap'
-        'langremap'
-        'maxmem'
-        'modeline'
-        'packpath'
-        'printdevice'
-        'printexpr'
-        'printoptions'
-        'runtimepath'
-        'secure'
-        'shellpipe'
-        'thesaurus'
-        'verbosefile'
-        'winptydll'
-        'writeany'
-        'writebackup'
-    )
-    for pat in "${dangerous[@]}"; do
-        grep -Hn -E "$pat" "$file" 2>/dev/null || true
-    done
+    grep -Hn -f "vim_patterns.grep" "$file" 2>/dev/null || true
 }
 
 check_py_file() {
     # TODO: dangerous functions specific to python
     # - relative imports
+    :
 }
 
 check_sh_file() {
     # TODO:
     # - su, sudo, chmod, mount, umount
     # - /dev
+    :
 }
 
 without_ignored() {
+    if [[ -z $IGNORE_LIST ]]; then
+        return 0
+    fi
     local s=$(echo "$1" | sort)
-    # TODO: bad command substitution, not ready yet but almost there
-    sort --merge --ignore-leading-blanks <(cat <($1) <($IGNORE_LIST)) | uniq --unique 
-    # comm --check-order -1 <($s) <($IGNORE_LIST)
+    comm --check-order -1 <(echo "$s") <(echo "$IGNORE_LIST")
 }
 
 do_report() {
     local message="$1"
     local check_output=$(without_ignored "$2")
+    # local check_output="$2"
     local color="${3:-}"
     echo -en "${message} check..."
     if [[ -n "$check_output" ]]; then
@@ -372,7 +284,7 @@ audit_file() {
     fi
 
     # 3. vim-specific checks
-    if [[ "${file:-4}" = ".vim" -o "${file:-5}" = "vimrc" ]]; then
+    if [ "${file: -4}" = ".vim" -o "${file: -5}" = "vimrc" ]; then
         local vim_check=$(check_vim_file "$file")
         do_report "[VIM-SPECIFIC]" "${vim_check}" "${RED}"
     fi
@@ -431,6 +343,7 @@ do_audit() {
 }
 
 # TODO: run in bwrap with readonly rights
+# TODO: links & devices - detect and report
 do_audit "$TARGET"
 
 echo -e "${GREEN}Audit completed.${NC}"
